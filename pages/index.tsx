@@ -42,7 +42,8 @@ export default function App() {
   if (error) {
     return (
       <div>
-        An error occured.
+        <h1>SmartShuffle</h1>
+        <div style={{ marginBottom: 10 }}>Login to Spotify to get started!</div>
         <Login />
       </div>
     );
