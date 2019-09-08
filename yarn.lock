@@ -1716,11 +1716,12 @@ bytes@3.1.0:
   resolved "https://registry.yarnpkg.com/bytes/-/bytes-3.1.0.tgz#f6cf7933a360e0588fa9fde85651cdc7f805d1f6"
   integrity sha512-zauLjrfCG+xvoyaqLoV8bLVXXNGC4JqlxFCutSDWA6fJrTo2ZuvLYTqZ7aHBLZSMOopbzwv8f+wZcVzfVTI2Dg==
 
-bywo-spotify-graphql@1.4.1-beta.3:
-  version "1.4.1-beta.3"
-  resolved "https://registry.yarnpkg.com/bywo-spotify-graphql/-/bywo-spotify-graphql-1.4.1-beta.3.tgz#affdf34095dc4538c56907dfb3ee139f309dab86"
-  integrity sha512-33GNsHLawZCPl2u1SjLtINFfdIaDiPbMxm147ezCKuei0cPZXSqxvVGbuGT4qLiUc0cfafaTGXdig8Tju4VsTQ==
+bywo-spotify-graphql@1.4.1-beta.5:
+  version "1.4.1-beta.5"
+  resolved "https://registry.yarnpkg.com/bywo-spotify-graphql/-/bywo-spotify-graphql-1.4.1-beta.5.tgz#bda1dfb5972ee1ee9064793fcf90d0a3086ff85e"
+  integrity sha512-bDAjRuGWrBHS2SrWC9h4/ivNJkYOh2coL5UALh85DOc0kl+L/xZXGuQ2fO9jUWRYKqJk5++jklyJNVL5WNAjuA==
   dependencies:
+    dataloader "^1.4.0"
     graphql "^14.4.2"
     graphql-tools "^4.0.5"
     isomorphic-unfetch "^3.0.0"
@@ -2197,6 +2198,11 @@ d@1:
   dependencies:
     es5-ext "^0.10.50"
     type "^1.0.1"
+
+dataloader@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/dataloader/-/dataloader-1.4.0.tgz#bca11d867f5d3f1b9ed9f737bd15970c65dff5c8"
+  integrity sha512-68s5jYdlvasItOJnCuI2Q9s4q98g0pCyL3HrcKJu8KNugUl8ahgmZYg38ysLTgQjjXX3H8CJLkAvWrclWfcalw==
 
 date-now@^0.1.4:
   version "0.1.4"
