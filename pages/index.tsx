@@ -52,22 +52,39 @@ export default function App() {
     return <div>Loading...</div>;
   }
 
-  console.log(data);
-
   return (
     <div>
-      hello {token}
       {!token && <Login />}
-      <div>{data.me.display_name}</div>
+      <h1>SmartShuffle</h1>
+      <div style={{ marginBottom: 10 }}>
+        Hey {data.me.display_name}! Choose a playlist.
+      </div>
       <div>
         {data.me.playlists.map(p => {
           return (
             <Link key={p.id} href={`/playlist?id=${p.id}&userId=${data.me.id}`}>
-              <a>{p.name}</a>
+              <a style={{ textDecoration: "none" }}>
+                <PlaylistListItem name={p.name} />
+              </a>
             </Link>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function PlaylistListItem({ name }: { name: string }) {
+  return (
+    <div
+      style={{
+        color: "black",
+        textDecoration: "none",
+        padding: 10,
+        fontSize: 16
+      }}
+    >
+      {name}
     </div>
   );
 }

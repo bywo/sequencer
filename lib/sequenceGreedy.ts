@@ -2,6 +2,7 @@ import * as _ from "lodash";
 const Combinatorics = require("js-combinatorics");
 var distance = require("euclidean-distance");
 import logTable from "./logTable";
+import { getTrackCoords } from "./trackCoordinates";
 
 export interface TrackWithFeatures {
   id: string;
@@ -35,38 +36,12 @@ export default function sequence(
   debug?: boolean
 ): TrackWithFeatures[] {
   const start = Date.now();
-  const tempos = tracks.map((t: any) => t.tempo);
-  const minTempo = _.min(tempos) as number;
-  const maxTempo = _.max(tempos) as number;
 
-  const loudnessValues = tracks.map((t: any) => t.loudness);
-  const minLoudness = _.min(loudnessValues) as number;
-  const maxLoudness = _.max(loudnessValues) as number;
-
-  const dimensions: Array<[string, Function]> = [
-    ["danceability", times100],
-    ["energy", times100],
-    ["speechiness", times100],
-    ["acousticness", times100],
-    ["valence", times100],
-    // "instrumentalness",
-    [
-      "tempo",
-      (t: number) => ((t - minTempo) / (maxTempo - minTempo)) * 0.5 * 100
-    ],
-    [
-      "loudness",
-      (l: number) => ((l - minLoudness) / (maxLoudness - minLoudness)) * 100
-    ]
-  ];
+  const { coords, dimensions } = getTrackCoords(tracks);
 
   const projected: TrackCoord[] = tracks.map((t: any, index: number) => ({
     id: index,
-    coords: dimensions.map(d => {
-      const [name, mapper] = d;
-      const rawValue = t[name];
-      return mapper(rawValue);
-    })
+    coords: coords[index]
   }));
 
   const pairs = Combinatorics.bigCombination(projected, 2);
@@ -91,11 +66,11 @@ export default function sequence(
           const track = tracks[id];
           return {
             name: track.name,
-            ..._.zipObject(dimensions.map(p => p[0]), coords)
+            ..._.zipObject(dimensions, coords)
           };
         });
         console.log("\nnew max", dist);
-        logTable(rowsToLog, ["name", ...dimensions.map(p => p[0])]);
+        logTable(rowsToLog, ["name", ...dimensions]);
       }
     }
   }
@@ -118,12 +93,12 @@ export default function sequence(
         const d = distance(prev.coords, track.coords);
         return {
           name: tracks[track.id].name,
-          ..._.zipObject(dimensions.map(p => p[0]), track.coords),
+          ..._.zipObject(dimensions, track.coords),
           distance: d
         };
       });
       console.log(`\n\nPrevious track: ${tracks[prev.id].name}`);
-      logTable(rowsToLog, ["name", ...dimensions.map(p => p[0]), "distance"]);
+      logTable(rowsToLog, ["name", ...dimensions, "distance"]);
     }
 
     sequenced.push(options[0]);

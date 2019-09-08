@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
+import range from "lodash/range";
 import gql from "graphql-tag";
 import { useQuery } from "@apollo/react-hooks";
 import sequence, { TrackWithFeatures } from "../lib/sequenceGreedy";
@@ -7,6 +8,9 @@ import { string } from "@amcharts/amcharts4/core";
 import sequenceGreedyClusters from "../lib/sequenceGreedyClusters";
 import { AudioFeatures } from "../lib/types";
 import tracksToHsla from "../lib/tracksToHsla";
+import { getTrackCoords } from "../lib/trackCoordinates";
+import { syncReorderedPlaylist } from "../lib/syncReorderedPlaylist";
+const skmeans = require("skmeans");
 
 const GET_DOGS = gql`
   query($playlistId: String!, $userId: String!) {
@@ -71,7 +75,7 @@ export default function Playlist({
     }
   });
 
-  const [sequenced, setSequenced] = useState<TrackWithFeatures[]>();
+  const [sequenced, setSequenced] = useState<number[]>();
   const onRequestSequence = useCallback(() => {
     if (data && data.playlist.tracks) {
       const input = data.playlist.tracks.map(t => {
@@ -82,59 +86,85 @@ export default function Playlist({
           ...audio_features
         };
       });
-      const annealing = sequenceAnnealing(input);
-      const greedy = sequence(input);
+      // const annealing = sequenceAnnealing(input);
+      // const greedy = sequence(input);
       const clusters = sequenceGreedyClusters(input);
 
-      setSequenced(annealing);
+      setSequenced(clusters);
     }
   }, [data && Object.keys(data).length && data.playlist.tracks]);
 
   console.log(data);
 
-  const colors = useMemo(() => {
+  const clusters = useMemo(() => {
     if (data && Object.keys(data).length && data.playlist.tracks) {
-      return tracksToHsla(
+      const { coords } = getTrackCoords(
         data.playlist.tracks.map(t => t.track.audio_features)
       );
+      const c = skmeans(coords, 7);
+      console.log("kmeans", c);
+      return c;
+    }
+    return undefined;
+  }, [data && Object.keys(data).length && data.playlist.tracks]);
+
+  const colors = useMemo(() => {
+    if (clusters) {
+      const sourceColors = [
+        "#76E63B", // green
+        "#5DCFFC", // light blue
+        "#5D7DFC", // blue
+        "#7E5DFC", // purple
+        "#F25DFC", // pink
+        "#FC5D70", // red
+        "#FC985D", // orange
+        "#FFDD21" // yellow
+      ];
+      return clusters.idxs.map((i: number) => sourceColors[i]);
     }
     return [];
-  }, [data && Object.keys(data).length && data.playlist.tracks]);
+  }, [clusters]);
+
+  const [didSave, setDidSave] = useState();
+
+  const onSave = useCallback(() => {
+    if (data && sequenced) {
+      setDidSave(true);
+      syncReorderedPlaylist(
+        id,
+        data.playlist.tracks.map(t => t.track),
+        sequenced
+      );
+    }
+  }, [data, sequenced]);
+
+  if (!data || !Object.keys(data).length) {
+    return "Loading...";
+  }
+
+  const trackOrder = sequenced || range(data.playlist.tracks.length);
 
   return (
     <div>
-      {id}
-      <button onClick={onRequestSequence}>Sequence</button>
-      {sequenced && (
-        <div>
-          <h2>Sequenced</h2>
-          <div>
-            {sequenced.map(track => {
-              return (
-                <div key={track.id}>
-                  {track.name} {track.artists.map(a => a.name)}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      <h2>Original</h2>
-      {data && Object.keys(data).length && (
-        <div>
-          <div>{data.playlist.name}</div>
-          <div>
-            {data.playlist.tracks.map(({ track }, i) => {
-              const color = colors[i];
-              return (
-                <div key={track.id} style={{ background: color }}>
-                  {track.name} {track.artists.map(a => a.name)}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <h1>{data.playlist.name}</h1>
+      <div style={{ marginBottom: 10 }}>
+        {sequenced ? (
+          didSave ? (
+            "All done!"
+          ) : (
+            <Button onClick={onSave}>Save to Spotify</Button>
+          )
+        ) : (
+          <Button onClick={onRequestSequence}>SmartShuffle</Button>
+        )}
+      </div>
+      <div>
+        {trackOrder.map(i => {
+          const color = colors[i];
+          const track = data.playlist.tracks[i].track;
+          return <Track key={track.id} color={color} {...track} />;
+        })}
+      </div>
     </div>
   );
 }
@@ -143,3 +173,61 @@ Playlist.getInitialProps = ({ query }: { query: { [k: string]: string } }) => ({
   id: query.id,
   userId: query.userId
 });
+
+function Track({
+  name,
+  artists,
+  color
+}: {
+  name: string;
+  artists: Array<{ name: string }>;
+  color: string;
+}) {
+  return (
+    <div style={{ background: color, color: "white", padding: 10 }}>
+      <div>{name}</div>
+      <div style={{ fontSize: "12px" }}>
+        <Join nodes={artists.map(a => a.name)} joiner=", " />
+      </div>
+    </div>
+  );
+}
+
+function Join({
+  nodes,
+  joiner
+}: {
+  nodes: React.ReactNode[];
+  joiner: React.ReactNode;
+}) {
+  const out: React.ReactNode[] = [];
+  nodes.forEach((n, i) => (out[i * 2] = n));
+  for (let i = 0; i < nodes.length - 1; i++) {
+    out[2 * i + 1] = joiner;
+  }
+
+  return React.createElement(React.Fragment, {}, ...out);
+}
+
+function Button({
+  children,
+  onClick
+}: {
+  children: React.ReactNode;
+  onClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: "inline-block",
+        background: "#48E884",
+        color: "white",
+        padding: "20px 40px",
+        borderRadius: "100px"
+      }}
+    >
+      {children}
+    </div>
+  );
+}

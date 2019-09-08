@@ -3,6 +3,7 @@ const Combinatorics = require("js-combinatorics");
 var distance = require("euclidean-distance");
 import logTable from "./logTable";
 import minByIterator from "./minByIterator";
+import { getTrackCoords } from "./trackCoordinates";
 
 export interface TrackWithFeatures {
   id: string;
@@ -75,40 +76,13 @@ function times100(n: number) {
 export default function sequenceGreedyClusters(
   tracks: TrackWithFeatures[],
   debug?: boolean
-): TrackWithFeatures[] {
+): number[] {
   const start = Date.now();
-  const tempos = tracks.map((t: any) => t.tempo);
-  const minTempo = _.min(tempos) as number;
-  const maxTempo = _.max(tempos) as number;
-
-  const loudnessValues = tracks.map((t: any) => t.loudness);
-  const minLoudness = _.min(loudnessValues) as number;
-  const maxLoudness = _.max(loudnessValues) as number;
-
-  const dimensions: Array<[string, Function]> = [
-    ["danceability", times100],
-    ["energy", times100],
-    ["speechiness", times100],
-    ["acousticness", times100],
-    ["valence", times100],
-    // "instrumentalness",
-    [
-      "tempo",
-      (t: number) => ((t - minTempo) / (maxTempo - minTempo)) * 0.5 * 100
-    ],
-    [
-      "loudness",
-      (l: number) => ((l - minLoudness) / (maxLoudness - minLoudness)) * 100
-    ]
-  ];
+  const { coords } = getTrackCoords(tracks);
 
   const projected: TrackCoord[] = tracks.map((t: any, index: number) => ({
     id: index,
-    coords: dimensions.map(d => {
-      const [name, mapper] = d;
-      const rawValue = t[name];
-      return mapper(rawValue);
-    })
+    coords: coords[index]
   }));
 
   const tcDistance = (a: TrackCoord, b: TrackCoord) =>
@@ -132,7 +106,7 @@ export default function sequenceGreedyClusters(
     totalDistance += distance(sequenced[i].coords, sequenced[i - 1].coords);
   }
 
-  const renderedSequence = sequenced.map(tc => tracks[tc.id]);
+  const renderedSequence = sequenced.map(tc => tc.id);
   console.log("totalDistance (clusters)", totalDistance, Date.now() - start);
   return renderedSequence;
 }
