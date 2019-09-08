@@ -54,7 +54,7 @@ export default function Playlist({
   id: string;
   userId: string;
 }) {
-  const { loading, error, data } = useQuery<{
+  const { loading, error, data, refetch } = useQuery<{
     playlist: {
       name: string;
       tracks: Array<{
@@ -102,7 +102,7 @@ export default function Playlist({
       const { coords } = getTrackCoords(
         data.playlist.tracks.map(t => t.track.audio_features)
       );
-      const c = skmeans(coords, 7);
+      const c = skmeans(coords, Math.min(7, data.playlist.tracks.length));
       console.log("kmeans", c);
       return c;
     }
@@ -128,16 +128,25 @@ export default function Playlist({
 
   const [didSave, setDidSave] = useState();
 
-  const onSave = useCallback(() => {
+  const onSave = useCallback(async () => {
     if (data && sequenced) {
       setDidSave(true);
-      syncReorderedPlaylist(
+      await syncReorderedPlaylist(
         id,
         data.playlist.tracks.map(t => t.track),
         sequenced
       );
     }
   }, [data, sequenced]);
+
+  // if we saved the reordering, trigger a refetch on unmount
+  useEffect(() => {
+    return () => {
+      if (didSave) {
+        refetch();
+      }
+    };
+  }, [didSave]);
 
   if (!data || !Object.keys(data).length) {
     return "Loading...";
