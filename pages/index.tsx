@@ -49,7 +49,7 @@ export default function App() {
     );
   }
 
-  if (!data || _.size(data) === 0) {
+  if (!data) {
     return <div>Loading...</div>;
   }
 

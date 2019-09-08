@@ -2,12 +2,8 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import range from "lodash/range";
 import gql from "graphql-tag";
 import { useQuery } from "@apollo/react-hooks";
-import sequence, { TrackWithFeatures } from "../lib/sequenceGreedy";
-import sequenceAnnealing from "../lib/sequenceAnnealing";
-import { string } from "@amcharts/amcharts4/core";
 import sequenceGreedyClusters from "../lib/sequenceGreedyClusters";
 import { AudioFeatures } from "../lib/types";
-import tracksToHsla from "../lib/tracksToHsla";
 import { getTrackCoords } from "../lib/trackCoordinates";
 import { syncReorderedPlaylist } from "../lib/syncReorderedPlaylist";
 import Button from "../components/Button";
@@ -93,12 +89,12 @@ export default function Playlist({
 
       setSequenced(clusters);
     }
-  }, [data && Object.keys(data).length && data.playlist.tracks]);
+  }, [data && data.playlist.tracks]);
 
   console.log(data);
 
   const clusters = useMemo(() => {
-    if (data && Object.keys(data).length && data.playlist.tracks) {
+    if (data && data.playlist.tracks) {
       const { coords } = getTrackCoords(
         data.playlist.tracks.map(t => t.track.audio_features)
       );
@@ -107,7 +103,7 @@ export default function Playlist({
       return c;
     }
     return undefined;
-  }, [data && Object.keys(data).length && data.playlist.tracks]);
+  }, [data && data.playlist.tracks]);
 
   const colors = useMemo(() => {
     if (clusters) {
@@ -148,7 +144,7 @@ export default function Playlist({
     };
   }, [didSave]);
 
-  if (!data || !Object.keys(data).length) {
+  if (!data) {
     return "Loading...";
   }
 
