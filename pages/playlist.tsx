@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import range from "lodash/range";
 import gql from "graphql-tag";
 import { useQuery } from "@apollo/react-hooks";
@@ -8,8 +8,9 @@ import { getTrackCoords } from "../lib/trackCoordinates";
 import { syncReorderedPlaylist } from "../lib/syncReorderedPlaylist";
 import Button from "../components/Button";
 const skmeans = require("skmeans");
+import FlipMove from "react-flip-move";
 
-const GET_DOGS = gql`
+const QUERY = gql`
   query($playlistId: String!, $userId: String!) {
     playlist(id: $playlistId, userId: $userId) {
       name
@@ -38,6 +39,7 @@ const GET_DOGS = gql`
             track_href
             valence
           }
+          preview_url
         }
       }
     }
@@ -62,14 +64,16 @@ export default function Playlist({
             name: string;
           }>;
           audio_features: AudioFeatures;
+          preview_url: string | null;
         };
       }>;
     };
-  }>(GET_DOGS, {
+  }>(QUERY, {
     variables: {
       playlistId: id,
       userId: userId
-    }
+    },
+    fetchPolicy: "network-only"
   });
 
   const [sequenced, setSequenced] = useState<number[]>();
@@ -91,7 +95,7 @@ export default function Playlist({
     }
   }, [data && data.playlist.tracks]);
 
-  console.log(data);
+  // console.log(data);
 
   const clusters = useMemo(() => {
     if (data && data.playlist.tracks) {
@@ -135,14 +139,8 @@ export default function Playlist({
     }
   }, [data, sequenced]);
 
-  // if we saved the reordering, trigger a refetch on unmount
-  useEffect(() => {
-    return () => {
-      if (didSave) {
-        refetch();
-      }
-    };
-  }, [didSave]);
+  const [previewTrack, setPreviewTrack] = useState<string>();
+  const [previewProgress, setPreviewProgress] = useState<number>(0);
 
   if (!data) {
     return "Loading...";
@@ -150,8 +148,26 @@ export default function Playlist({
 
   const trackOrder = sequenced || range(data.playlist.tracks.length);
 
+  let previewUrl;
+  if (data && previewTrack) {
+    const track = data.playlist.tracks.find(t => t.track.id === previewTrack);
+    if (track) {
+      previewUrl = track.track.preview_url;
+    }
+  }
+
   return (
     <div>
+      <audio
+        autoPlay
+        src={previewUrl || undefined}
+        onEnded={() => setPreviewTrack(undefined)}
+        onTimeUpdate={e =>
+          setPreviewProgress(
+            e.currentTarget.currentTime / e.currentTarget.duration
+          )
+        }
+      />
       <h1>{data.playlist.name}</h1>
       <div style={{ marginBottom: 10 }}>
         {sequenced ? (
@@ -164,12 +180,29 @@ export default function Playlist({
           <Button onClick={onRequestSequence}>SmartShuffle</Button>
         )}
       </div>
-      <div>
-        {trackOrder.map(i => {
-          const color = colors[i];
-          const track = data.playlist.tracks[i].track;
-          return <Track key={track.id} color={color} {...track} />;
-        })}
+      <div style={{ position: "relative" }}>
+        <FlipMove typeName={null} staggerDurationBy={30}>
+          {trackOrder.map(i => {
+            const color = colors[i];
+            const track = data.playlist.tracks[i].track;
+            return (
+              <div key={track.id}>
+                <Track
+                  key={track.id}
+                  color={color}
+                  {...track}
+                  onClick={() => {
+                    setPreviewTrack(track.id);
+                    setPreviewProgress(0);
+                  }}
+                  progress={
+                    track.id === previewTrack ? previewProgress : undefined
+                  }
+                />
+              </div>
+            );
+          })}
+        </FlipMove>
       </div>
     </div>
   );
@@ -183,17 +216,44 @@ Playlist.getInitialProps = ({ query }: { query: { [k: string]: string } }) => ({
 function Track({
   name,
   artists,
-  color
+  color,
+  progress,
+  onClick
 }: {
   name: string;
   artists: Array<{ name: string }>;
   color: string;
+  progress?: number;
+  onClick?: any;
 }) {
   return (
-    <div style={{ background: color, color: "white", padding: 10 }}>
-      <div>{name}</div>
-      <div style={{ fontSize: "12px" }}>
-        <Join nodes={artists.map(a => a.name)} joiner=", " />
+    <div
+      style={{
+        background: color,
+        color: "white",
+        padding: 10,
+        position: "relative"
+      }}
+      onClick={onClick}
+    >
+      {progress !== undefined && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            bottom: 0,
+            width: `${progress * 100}%`,
+            background: "black",
+            opacity: 0.5
+          }}
+        ></div>
+      )}
+      <div style={{ position: "relative" }}>
+        <div>{name}</div>
+        <div style={{ fontSize: "12px" }}>
+          <Join nodes={artists.map(a => a.name)} joiner=", " />
+        </div>
       </div>
     </div>
   );

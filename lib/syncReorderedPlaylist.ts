@@ -1,6 +1,5 @@
-import range from "lodash/range";
-import isEqual from "lodash/isEqual";
 import { spotifyApi } from "./spotifyApi";
+import { reorder } from "./reorder";
 
 export async function syncReorderedPlaylist(
   playlistId: string,
@@ -12,24 +11,14 @@ export async function syncReorderedPlaylist(
   }
   console.log("new order", newOrder);
 
-  let currentOrder = range(tracks.length);
-  while (!isEqual(currentOrder, newOrder)) {
-    const targetIndex = newOrder.findIndex(
-      (val, i) => newOrder[i] !== currentOrder[i]
-    );
-
-    const originalTrackIndex = newOrder[targetIndex];
-    const sourceIndex = currentOrder.indexOf(originalTrackIndex);
-
+  for (const { sourceIndex, targetIndex, state } of reorder(newOrder)) {
     // apply reorder online
     await spotifyApi.reorderTracksInPlaylist(
       playlistId,
       sourceIndex,
       targetIndex
     );
-    // apply reorder locally
-    currentOrder.splice(sourceIndex, 1);
-    currentOrder.splice(targetIndex, 0, originalTrackIndex);
-    console.log("reorder", currentOrder);
+
+    console.log("reorder", state);
   }
 }
